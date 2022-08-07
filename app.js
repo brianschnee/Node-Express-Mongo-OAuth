@@ -1,24 +1,49 @@
+const path = require('path')
 const express = require('express')
+const dotenv = require('dotenv')
+const morgan = require('morgan')
+const { engine } = require('express-handlebars')
+const passport = require('passport')
+const session = require('express-session')
+const connectDB = require('./config/db')
+
+// Load config
+dotenv.config({ path: './config/config.env' })
+
+// Passport config
+require('./config/passport')(passport)
+
+// Express
 const app = express()
 
 // show requests in console when in development mode
-const morgan = require('morgan')
-if(process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === 'development') {
     app.use(morgan('dev'))
 }
 
-// load config
-const dotenv = require('dotenv')
-dotenv.config({ path: './config/config.env' })
-
 // connect to DB
-const connectDB = require('./config/db')
 connectDB()
 
-// use express handlebars template engine
-const { engine } = require('express-handlebars');
+// Handlebars
 app.engine('.hbs', engine({ extname: '.hbs', defaultLayout: 'main' }))
 app.set('view engine', '.hbs')
+
+// Sessions
+app.use(session({
+    secret: 'keyboard cat',
+    resave: false, // dont save a session if nothing is modified
+    saveUninitialized: false, // dont create session until something is stored
+}))
+
+// Passport middleware
+app.use(passport.initialize())
+app.use(passport.session())
+
+// static folder
+app.use(express.static(path.join(__dirname, 'public')))
+
+// Routes
+app.use('/', require('./routes/index'))
 
 const PORT = process.env.PORT || 3000
 
